@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Undercover — The Party Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #e8ff47;
+    --accent2: #ff4f6d;
+    --accent3: #47c8ff;
+    --white: #f0f0f0;
+    --muted: #666680;
+    --civilian: #47c8ff;
+    --undercover: #ff4f6d;
+    --mrwhite: #e8ff47;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.4;
+  }
+
+  .screen { display: none; min-height: 100vh; flex-direction: column; position: relative; z-index: 1; }
+  .screen.active { display: flex; }
+
+  /* ── HEADER ── */
+  .game-header {
+    padding: 24px 20px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--accent2); }
+
+  /* ── SETUP SCREEN ── */
+  #setup {
+    padding: 0 20px 40px;
+    justify-content: flex-start;
+  }
+  .setup-hero {
+    text-align: center;
+    padding: 48px 0 36px;
+  }
+  .setup-hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 14vw, 80px);
+    line-height: 0.9;
+    letter-spacing: 4px;
+  }
+  .setup-hero h1 .line1 { color: var(--white); display: block; }
+  .setup-hero h1 .line2 { color: var(--accent); display: block; }
+  .setup-hero p {
+    color: var(--muted); font-size: 14px; margin-top: 12px; line-height: 1.6;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+  .setup-section { margin-bottom: 28px; }
+
+  /* Player count stepper */
+  .stepper {
+    display: flex; align-items: center; gap: 0;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; height: 56px;
+  }
+  .stepper button {
+    width: 56px; height: 56px; border: none; background: transparent;
+    color: var(--white); font-size: 22px; cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .stepper button:active { background: var(--border); }
+  .stepper-val {
+    flex: 1; text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  /* Role toggles */
+  .role-row {
+    display: flex; gap: 10px;
+  }
+  .role-toggle {
+    flex: 1; padding: 14px 10px;
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 12px; text-align: center; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .role-toggle.on { border-color: var(--accent); background: rgba(232,255,71,0.06); }
+  .role-toggle .icon { font-size: 22px; }
+  .role-toggle .name { font-size: 12px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
+  .role-toggle .count-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px;
+  }
+  .role-toggle .count-row button {
+    width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--white); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .role-toggle .count-val { font-size: 16px; font-weight: 700; min-width: 20px; text-align: center; }
+
+  /* Player names */
+  .player-list { display: flex; flex-direction: column; gap: 10px; }
+  .player-input-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .player-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    color: var(--accent); min-width: 28px;
+  }
+  .player-input-row input {
+    flex: 1; padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--white); font-size: 15px;
+    font-family: 'DM Sans', sans-serif; outline: none;
+    transition: border-color 0.2s;
+  }
+  .player-input-row input:focus { border-color: var(--accent); }
+  .player-input-row input::placeholder { color: var(--muted); }
+
+  /* Word pair */
+  .word-pair {
+    display: flex; gap: 10px;
+  }
+  .word-pair input {
+    flex: 1; padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--white); font-size: 15px;
+    font-family: 'DM Sans', sans-serif; outline: none;
+    transition: border-color 0.2s;
+  }
+  .word-pair input:focus { border-color: var(--accent); }
+  .word-pair input::placeholder { color: var(--muted); }
+
+  /* Random word btn */
+  .random-btn {
+    width: 100%; padding: 14px;
+    background: var(--surface); border: 1px dashed var(--border);
+    border-radius: 12px; color: var(--muted); font-size: 13px;
+    cursor: pointer; margin-top: 8px; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .random-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  /* CTA */
+  .cta-btn {
+    width: 100%; padding: 18px;
+    background: var(--accent); border: none; border-radius: 14px;
+    color: #0a0a0f; font-size: 16px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: transform 0.1s, opacity 0.2s;
+    margin-top: 8px;
+  }
+  .cta-btn:active { transform: scale(0.97); }
+  .cta-btn.danger { background: var(--accent2); color: #fff; }
+  .cta-btn.ghost {
+    background: transparent; color: var(--white);
+    border: 1.5px solid var(--border);
+  }
+
+  .error-msg {
+    color: var(--accent2); font-size: 13px; text-align: center;
+    margin-top: -4px; margin-bottom: 8px; min-height: 18px;
+  }
+
+  /* ── PASS SCREEN ── */
+  #pass-screen {
+    align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .pass-icon { font-size: 64px; margin-bottom: 24px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+  .pass-label {
+    font-size: 13px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .pass-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 12vw, 64px); letter-spacing: 3px; color: var(--white);
+    margin-bottom: 8px;
+  }
+  .pass-sub {
+    color: var(--muted); font-size: 14px; margin-bottom: 36px; line-height: 1.5;
+  }
+
+  /* ── WORD REVEAL ── */
+  #word-reveal {
+    align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .reveal-header { margin-bottom: 40px; }
+  .reveal-role-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 18px; border-radius: 100px;
+    font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .reveal-role-badge.civilian { background: rgba(71,200,255,0.12); color: var(--civilian); border: 1px solid rgba(71,200,255,0.3); }
+  .reveal-role-badge.undercover { background: rgba(255,79,109,0.12); color: var(--undercover); border: 1px solid rgba(255,79,109,0.3); }
+  .reveal-role-badge.mrwhite { background: rgba(232,255,71,0.12); color: var(--mrwhite); border: 1px solid rgba(232,255,71,0.3); }
+
+  .reveal-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 10vw, 56px); letter-spacing: 3px;
+  }
+
+  .word-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px 24px; margin: 0 0 32px;
+    width: 100%; max-width: 340px;
+    position: relative; overflow: hidden;
+  }
+  .word-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(232,255,71,0.05), transparent 70%);
+  }
+  .word-hidden {
+    font-size: 15px; color: var(--muted); line-height: 1.5;
+  }
+  .word-shown {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(38px, 11vw, 54px); letter-spacing: 4px;
+    color: var(--accent); line-height: 1;
+  }
+  .word-shown.undercover { color: var(--undercover); }
+  .word-shown.mrwhite-word { color: var(--mrwhite); }
+
+  .word-hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+  .hold-btn {
+    width: 100%; max-width: 340px; padding: 20px;
+    background: var(--accent); border: none; border-radius: 16px;
+    color: #0a0a0f; font-size: 15px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: transform 0.1s;
+    position: relative; overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  .hold-btn::after {
+    content: '';
+    position: absolute; left: 0; top: 0; height: 100%;
+    width: var(--progress, 0%);
+    background: rgba(0,0,0,0.15);
+    transition: width 0.05s linear;
+  }
+  .hold-btn:active { transform: scale(0.98); }
+
+  /* ── DESCRIBE ORDER ── */
+  #describe-order {
+    padding: 24px 20px 40px;
+  }
+  .order-hero { padding: 24px 0 28px; text-align: center; }
+  .order-hero h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 10vw, 52px); letter-spacing: 3px;
+  }
+  .order-hero p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .order-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .order-item {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 18px;
+    animation: slideIn 0.3s ease both;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  .order-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px;
+    color: var(--accent); min-width: 32px;
+  }
+  .order-name { font-size: 16px; font-weight: 600; flex: 1; }
+  .order-status {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 100px;
+  }
+  .order-status.pending { background: rgba(255,255,255,0.05); color: var(--muted); }
+  .order-status.current { background: var(--accent); color: #0a0a0f; }
+  .order-status.done { background: rgba(71,200,255,0.1); color: var(--civilian); }
+
+  .current-turn-card {
+    background: var(--card); border: 1.5px solid var(--accent);
+    border-radius: 16px; padding: 20px; margin-bottom: 20px;
+    text-align: center;
+  }
+  .current-turn-card .turn-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .current-turn-card .turn-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px; letter-spacing: 2px; color: var(--accent);
+  }
+  .current-turn-card .turn-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* ── VOTING ── */
+  #voting {
+    padding: 24px 20px 40px;
+  }
+  .vote-hero { padding: 24px 0 28px; text-align: center; }
+  .vote-hero h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 10vw, 52px); letter-spacing: 3px;
+    color: var(--accent2);
+  }
+  .vote-hero p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .vote-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .vote-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 16px 18px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .vote-card.selected { border-color: var(--accent2); background: rgba(255,79,109,0.08); }
+  .vote-card.eliminated { opacity: 0.35; pointer-events: none; }
+  .vote-card-name { font-size: 16px; font-weight: 600; }
+  .vote-card-votes {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent2);
+  }
+  .vote-tally { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .vote-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); }
+
+  /* ── RESULT ── */
+  #result {
+    align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .result-icon { font-size: 72px; margin-bottom: 20px; }
+  .result-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 11vw, 64px); letter-spacing: 3px; margin-bottom: 8px;
+  }
+  .result-sub { color: var(--muted); font-size: 15px; margin-bottom: 32px; line-height: 1.6; }
+
+  .reveal-cards { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+  .reveal-player-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 18px;
+  }
+  .reveal-player-card .rp-name { flex: 1; font-size: 16px; font-weight: 600; }
+  .reveal-player-card .rp-role {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; padding: 4px 10px;
+    border-radius: 100px; text-transform: uppercase;
+  }
+  .rp-role.civilian { background: rgba(71,200,255,0.1); color: var(--civilian); }
+  .rp-role.undercover { background: rgba(255,79,109,0.1); color: var(--undercover); }
+  .rp-role.mrwhite { background: rgba(232,255,71,0.1); color: var(--mrwhite); }
+
+  .word-reveal-final {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; width: 100%; max-width: 360px; margin-bottom: 28px;
+  }
+  .word-reveal-final .wrf-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+  .word-reveal-final .wrf-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .word-reveal-final .wrf-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .word-reveal-final .wrf-word { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; }
+
+  /* ── ELIMINATE POPUP ── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    z-index: 100; align-items: center; justify-content: center; padding: 24px;
+  }
+  .overlay.show { display: flex; }
+  .popup {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 380px;
+    text-align: center;
+  }
+  .popup h3 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+  .popup p { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .popup-btns { display: flex; flex-direction: column; gap: 10px; }
+
+  /* MR WHITE GUESS POPUP */
+  .guess-input {
+    width: 100%; padding: 14px 16px; margin-bottom: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--white); font-size: 16px;
+    font-family: 'DM Sans', sans-serif; outline: none;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .guess-input:focus { border-color: var(--mrwhite); }
+
+  /* ── UTILS ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .spacer { flex: 1; }
+  .mt-auto { margin-top: auto; }
+
+  @media (min-width: 480px) {
+    .setup-hero { padding: 60px 0 44px; }
+    #setup { padding: 0 28px 48px; }
+    #word-reveal, #pass-screen, #result { padding: 60px 32px; }
+    #describe-order, #voting { padding: 24px 28px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SETUP ══════════════════ -->
+<div id="setup" class="screen active">
+  <div class="setup-hero">
+    <h1><span class="line1">UNDER</span><span class="line2">COVER</span></h1>
+    <p>Deceive. Describe. Detect.<br>Who's the spy among you?</p>
+  </div>
+
+  <div class="setup-section">
+    <div class="section-label">Number of Players</div>
+    <div class="stepper">
+      <button onclick="changeCount(-1)">−</button>
+      <div class="stepper-val" id="player-count-display">4</div>
+      <button onclick="changeCount(1)">+</button>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="section-label">Roles</div>
+    <div class="role-row">
+      <div class="role-toggle on" id="uc-toggle">
+        <div class="icon">🕵️</div>
+        <div class="name">Undercover</div>
+        <div class="count-row">
+          <button onclick="changeRole('uc',-1)">−</button>
+          <div class="count-val" id="uc-count">1</div>
+          <button onclick="changeRole('uc',1)">+</button>
+        </div>
+      </div>
+      <div class="role-toggle" id="mw-toggle" onclick="toggleMrWhite()">
+        <div class="icon">👻</div>
+        <div class="name">Mr. White</div>
+        <div class="count-row">
+          <button onclick="event.stopPropagation();changeRole('mw',-1)">−</button>
+          <div class="count-val" id="mw-count">0</div>
+          <button onclick="event.stopPropagation();changeRole('mw',1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="section-label">Player Names</div>
+    <div class="player-list" id="player-list"></div>
+  </div>
+
+  <div class="setup-section">
+    <div class="section-label">Words</div>
+    <div class="word-pair">
+      <input id="civilian-word" placeholder="🏠 Civilian word" type="text">
+      <input id="undercover-word" placeholder="🕵️ Undercover word" type="text">
+    </div>
+    <button class="random-btn" onclick="randomWords()">🎲 Pick random word pair</button>
+  </div>
+
+  <div class="error-msg" id="setup-error"></div>
+  <button class="cta-btn" onclick="startGame()">START GAME</button>
+</div>
+
+<!-- ══════════════════ PASS PHONE ══════════════════ -->
+<div id="pass-screen" class="screen">
+  <div class="pass-icon">📱</div>
+  <div class="pass-label">Pass the phone to</div>
+  <div class="pass-name" id="pass-name"></div>
+  <div class="pass-sub">Make sure nobody else is watching!<br>Hold to reveal your word.</div>
+  <button class="hold-btn" id="hold-btn"
+    onpointerdown="startHold()" onpointerup="cancelHold()" onpointerleave="cancelHold()">
+    HOLD TO REVEAL
+  </button>
+</div>
+
+<!-- ══════════════════ WORD REVEAL ══════════════════ -->
+<div id="word-reveal" class="screen">
+  <div class="reveal-header">
+    <div class="reveal-role-badge" id="reveal-badge">👤 Civilian</div>
+    <div class="reveal-name" id="reveal-player-name"></div>
+  </div>
+
+  <div class="word-card" id="word-card">
+    <div class="word-shown" id="reveal-word"></div>
+    <div class="word-hint" id="reveal-hint"></div>
+  </div>
+
+  <button class="hold-btn" id="done-btn"
+    onpointerdown="startDoneHold()" onpointerup="cancelDoneHold()" onpointerleave="cancelDoneHold()">
+    HOLD TO CONFIRM & PASS
+  </button>
+</div>
+
+<!-- ══════════════════ DESCRIBE ORDER ══════════════════ -->
+<div id="describe-order" class="screen">
+  <div class="order-hero">
+    <h2>DESCRIBE ORDER</h2>
+    <p>Each player gives ONE clue about their word.<br>Don't be too obvious — or too vague!</p>
+  </div>
+
+  <div class="current-turn-card" id="current-turn-card">
+    <div class="turn-label">Now Describing</div>
+    <div class="turn-name" id="current-turn-name"></div>
+    <div class="turn-hint">Give ONE clue. Be strategic!</div>
+  </div>
+
+  <div class="order-list" id="order-list"></div>
+
+  <button class="cta-btn" id="next-turn-btn" onclick="nextTurn()">NEXT PLAYER →</button>
+  <div style="height:10px"></div>
+  <button class="cta-btn ghost" onclick="skipToVote()">VOTE NOW</button>
+</div>
+
+<!-- ══════════════════ VOTING ══════════════════ -->
+<div id="voting" class="screen">
+  <div class="vote-hero">
+    <h2>VOTE OUT</h2>
+    <p>Discuss and vote who you think is the spy.<br>Most votes gets eliminated!</p>
+  </div>
+
+  <div class="vote-list" id="vote-list"></div>
+  <div class="error-msg" id="vote-error"></div>
+  <button class="cta-btn danger" onclick="castVotes()">ELIMINATE</button>
+</div>
+
+<!-- ══════════════════ RESULT ══════════════════ -->
+<div id="result" class="screen">
+  <div class="result-icon" id="result-icon"></div>
+  <div class="result-title" id="result-title"></div>
+  <div class="result-sub" id="result-sub"></div>
+
+  <div class="word-reveal-final" id="word-reveal-final">
+    <div class="wrf-row">
+      <span class="wrf-label">Civilian Word</span>
+      <span class="wrf-word" id="final-civilian-word"></span>
+    </div>
+    <div class="wrf-row">
+      <span class="wrf-label">Undercover Word</span>
+      <span class="wrf-word" id="final-undercover-word" style="color:var(--undercover)"></span>
+    </div>
+  </div>
+
+  <div class="reveal-cards" id="reveal-cards"></div>
+
+  <button class="cta-btn" onclick="playAgain()">PLAY AGAIN 🔄</button>
+</div>
+
+<!-- ══════════════════ ELIMINATE POPUP ══════════════════ -->
+<div class="overlay" id="elim-overlay">
+  <div class="popup">
+    <h3 id="elim-title">ELIMINATED!</h3>
+    <p id="elim-msg"></p>
+    <div class="popup-btns">
+      <div id="mrwhite-guess-section" style="display:none">
+        <input class="guess-input" id="mrwhite-guess" placeholder="Type the civilian's word..." />
+      </div>
+      <button class="cta-btn" id="elim-confirm-btn" onclick="confirmElim()">CONTINUE</button>
+      <button class="cta-btn ghost" onclick="closeElimOverlay()">GO BACK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ WORD PAIRS ══
+const WORD_PAIRS = [
+  ['Hospital','Clinic'],['Dog','Wolf'],['Sun','Moon'],['Guitar','Violin'],
+  ['Coffee','Tea'],['King','Queen'],['Diamond','Crystal'],['Ocean','Lake'],
+  ['Castle','Fortress'],['Bacteria','Virus'],['Pizza','Burger'],['Tiger','Lion'],
+  ['Knife','Sword'],['Phone','Radio'],['Computer','Calculator'],['Milk','Water'],
+  ['Teacher','Professor'],['Actor','Singer'],['Chocolate','Candy'],['Train','Bus'],
+  ['Apple','Pear'],['Shirt','Jacket'],['Mirror','Window'],['Candle','Torch'],
+  ['River','Stream'],['Chair','Throne'],['Pen','Pencil'],['Hat','Cap'],
+  ['Crow','Raven'],['Boat','Ship'],
+];
+
+// ══ STATE ══
+let state = {
+  players: [], // {name, role, word, alive}
+  civWord: '', ucWord: '',
+  currentReveal: 0,
+  describeOrder: [],
+  currentDescribe: 0,
+  votes: {}, // playerIndex -> votes count
+  selectedVote: null,
+  pendingElim: null,
+};
+
+let holdTimer = null, holdProgress = 0, holdInterval = null;
+
+// ══ INIT ══
+let playerCount = 4, ucCount = 1, mwCount = 0;
+buildPlayerInputs();
+
+function changeCount(d) {
+  playerCount = Math.max(3, Math.min(10, playerCount + d));
+  document.getElementById('player-count-display').textContent = playerCount;
+  buildPlayerInputs();
+  validateRoles();
+}
+
+function changeRole(role, d) {
+  if (role === 'uc') {
+    ucCount = Math.max(1, Math.min(3, ucCount + d));
+    document.getElementById('uc-count').textContent = ucCount;
+  } else {
+    mwCount = Math.max(0, Math.min(2, mwCount + d));
+    document.getElementById('mw-count').textContent = mwCount;
+    document.getElementById('mw-toggle').classList.toggle('on', mwCount > 0);
+  }
+  validateRoles();
+}
+
+function toggleMrWhite() {
+  mwCount = mwCount === 0 ? 1 : 0;
+  document.getElementById('mw-count').textContent = mwCount;
+  document.getElementById('mw-toggle').classList.toggle('on', mwCount > 0);
+  validateRoles();
+}
+
+function validateRoles() {
+  const civilians = playerCount - ucCount - mwCount;
+  const err = document.getElementById('setup-error');
+  if (civilians < 1) {
+    err.textContent = 'Need at least 1 civilian!';
+  } else if (ucCount + mwCount >= playerCount) {
+    err.textContent = 'Too many special roles!';
+  } else {
+    err.textContent = '';
+  }
+}
+
+function buildPlayerInputs() {
+  const list = document.getElementById('player-list');
+  const existing = [...list.querySelectorAll('input')].map(i => i.value);
+  list.innerHTML = '';
+  for (let i = 0; i < playerCount; i++) {
+    list.innerHTML += `
+      <div class="player-input-row">
+        <div class="player-num">${i+1}</div>
+        <input type="text" placeholder="Player ${i+1} name" value="${existing[i]||''}" id="pname-${i}">
+      </div>`;
+  }
+}
+
+function randomWords() {
+  const pair = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+  document.getElementById('civilian-word').value = pair[0];
+  document.getElementById('undercover-word').value = pair[1];
+}
+
+// ══ START GAME ══
+function startGame() {
+  const err = document.getElementById('setup-error');
+  const names = [];
+  for (let i = 0; i < playerCount; i++) {
+    const v = document.getElementById(`pname-${i}`).value.trim();
+    names.push(v || `Player ${i+1}`);
+  }
+  const civWord = document.getElementById('civilian-word').value.trim();
+  const ucWord = document.getElementById('undercover-word').value.trim();
+
+  if (!civWord || !ucWord) { err.textContent = 'Please enter both words!'; return; }
+  const civilians = playerCount - ucCount - mwCount;
+  if (civilians < 1) { err.textContent = 'Need at least 1 civilian!'; return; }
+
+  state.civWord = civWord;
+  state.ucWord = ucWord;
+
+  // Assign roles
+  const roles = [];
+  for (let i = 0; i < civilians; i++) roles.push('civilian');
+  for (let i = 0; i < ucCount; i++) roles.push('undercover');
+  for (let i = 0; i < mwCount; i++) roles.push('mrwhite');
+  shuffle(roles);
+
+  state.players = names.map((name, i) => ({
+    name, role: roles[i],
+    word: roles[i] === 'civilian' ? civWord : roles[i] === 'undercover' ? ucWord : '',
+    alive: true,
+  }));
+
+  state.currentReveal = 0;
+  showPassScreen();
+}
+
+// ══ PASS SCREEN ══
+function showPassScreen() {
+  const p = state.players[state.currentReveal];
+  document.getElementById('pass-name').textContent = p.name;
+  show('pass-screen');
+}
+
+// ══ HOLD TO REVEAL ══
+function startHold() {
+  holdProgress = 0;
+  const btn = document.getElementById('hold-btn');
+  btn.style.setProperty('--progress', '0%');
+  holdInterval = setInterval(() => {
+    holdProgress += 4;
+    btn.style.setProperty('--progress', holdProgress + '%');
+    if (holdProgress >= 100) {
+      clearInterval(holdInterval);
+      showWordReveal();
+    }
+  }, 50);
+}
+function cancelHold() {
+  clearInterval(holdInterval);
+  holdProgress = 0;
+  const btn = document.getElementById('hold-btn');
+  if (btn) btn.style.setProperty('--progress', '0%');
+}
+
+function showWordReveal() {
+  const p = state.players[state.currentReveal];
+  const badge = document.getElementById('reveal-badge');
+  const wordEl = document.getElementById('reveal-word');
+  const hint = document.getElementById('reveal-hint');
+
+  document.getElementById('reveal-player-name').textContent = p.name;
+
+  if (p.role === 'civilian') {
+    badge.className = 'reveal-role-badge civilian';
+    badge.textContent = '🏠 Civilian';
+    wordEl.className = 'word-shown';
+    wordEl.textContent = p.word;
+    hint.textContent = 'Your word — keep it secret!';
+  } else if (p.role === 'undercover') {
+    badge.className = 'reveal-role-badge undercover';
+    badge.textContent = '🕵️ Undercover';
+    wordEl.className = 'word-shown undercover';
+    wordEl.textContent = p.word;
+    hint.textContent = 'You are the spy. Blend in!';
+  } else {
+    badge.className = 'reveal-role-badge mrwhite';
+    badge.textContent = '👻 Mr. White';
+    wordEl.className = 'word-shown mrwhite-word';
+    wordEl.textContent = '???';
+    hint.textContent = 'You have no word. Guess & survive!';
+  }
+  show('word-reveal');
+}
+
+// ══ DONE HOLD ══
+let doneHoldInterval = null, doneHoldProgress = 0;
+function startDoneHold() {
+  doneHoldProgress = 0;
+  const btn = document.getElementById('done-btn');
+  btn.style.setProperty('--progress', '0%');
+  doneHoldInterval = setInterval(() => {
+    doneHoldProgress += 4;
+    btn.style.setProperty('--progress', doneHoldProgress + '%');
+    if (doneHoldProgress >= 100) {
+      clearInterval(doneHoldInterval);
+      nextReveal();
+    }
+  }, 50);
+}
+function cancelDoneHold() {
+  clearInterval(doneHoldInterval);
+  doneHoldProgress = 0;
+  const btn = document.getElementById('done-btn');
+  if (btn) btn.style.setProperty('--progress', '0%');
+}
+
+function nextReveal() {
+  state.currentReveal++;
+  if (state.currentReveal >= state.players.length) {
+    startDescribePhase();
+  } else {
+    showPassScreen();
+  }
+}
+
+// ══ DESCRIBE PHASE ══
+function startDescribePhase() {
+  const alive = state.players.filter(p => p.alive).map((p, i) => ({...p, origIndex: state.players.indexOf(p)}));
+  const order = [...alive];
+  shuffle(order);
+  state.describeOrder = order;
+  state.currentDescribe = 0;
+  renderDescribeScreen();
+  show('describe-order');
+}
+
+function renderDescribeScreen() {
+  const orderList = document.getElementById('order-list');
+  const currentCard = document.getElementById('current-turn-card');
+  const nextBtn = document.getElementById('next-turn-btn');
+
+  const current = state.describeOrder[state.currentDescribe];
+  if (current) {
+    document.getElementById('current-turn-name').textContent = current.name;
+    currentCard.style.display = 'block';
+  }
+
+  const allDone = state.currentDescribe >= state.describeOrder.length;
+  nextBtn.textContent = allDone ? 'GO TO VOTING →' : 'NEXT PLAYER →';
+  if (allDone) currentCard.style.display = 'none';
+
+  orderList.innerHTML = '';
+  state.describeOrder.forEach((p, i) => {
+    let statusClass = 'pending', statusText = 'Waiting';
+    if (i < state.currentDescribe) { statusClass = 'done'; statusText = 'Done ✓'; }
+    else if (i === state.currentDescribe) { statusClass = 'current'; statusText = 'Now!'; }
+    orderList.innerHTML += `
+      <div class="order-item" style="animation-delay:${i*0.05}s">
+        <div class="order-num">${i+1}</div>
+        <div class="order-name">${p.name}</div>
+        <div class="order-status ${statusClass}">${statusText}</div>
+      </div>`;
+  });
+}
+
+function nextTurn() {
+  state.currentDescribe++;
+  if (state.currentDescribe >= state.describeOrder.length) {
+    showVoting();
+  } else {
+    renderDescribeScreen();
+  }
+}
+
+function skipToVote() {
+  showVoting();
+}
+
+// ══ VOTING ══
+function showVoting() {
+  const alive = state.players.filter(p => p.alive);
+  state.selectedVote = null;
+  state.votes = {};
+  alive.forEach((_, i) => state.votes[state.players.indexOf(alive[i])] = 0);
+
+  renderVoteList();
+  show('voting');
+}
+
+function renderVoteList() {
+  const list = document.getElementById('vote-list');
+  const alive = state.players.filter(p => p.alive);
+  list.innerHTML = '';
+  alive.forEach(p => {
+    const idx = state.players.indexOf(p);
+    const selected = state.selectedVote === idx ? 'selected' : '';
+    list.innerHTML += `
+      <div class="vote-card ${selected}" onclick="selectVote(${idx})">
+        <div>
+          <div class="vote-card-name">${p.name}</div>
+        </div>
+        <div class="vote-card-votes">${state.votes[idx] || 0}</div>
+      </div>`;
+  });
+}
+
+function selectVote(idx) {
+  state.selectedVote = idx;
+  renderVoteList();
+  document.getElementById('vote-error').textContent = '';
+}
+
+function castVotes() {
+  if (state.selectedVote === null) {
+    document.getElementById('vote-error').textContent = 'Select a player to eliminate!';
+    return;
+  }
+  state.pendingElim = state.selectedVote;
+  const p = state.players[state.pendingElim];
+  const overlay = document.getElementById('elim-overlay');
+  const mwSection = document.getElementById('mrwhite-guess-section');
+
+  document.getElementById('elim-title').textContent = `${p.name} is Eliminated!`;
+
+  if (p.role === 'mrwhite') {
+    document.getElementById('elim-msg').textContent = `${p.name} is Mr. White! They get ONE chance to guess the civilian's word. If correct, Mr. White wins!`;
+    mwSection.style.display = 'block';
+    document.getElementById('mrwhite-guess').value = '';
+    document.getElementById('elim-confirm-btn').textContent = 'SUBMIT GUESS';
+  } else {
+    mwSection.style.display = 'none';
+    document.getElementById('elim-msg').textContent = `Are you sure you want to eliminate ${p.name}?`;
+    document.getElementById('elim-confirm-btn').textContent = 'CONFIRM';
+  }
+  overlay.classList.add('show');
+}
+
+function closeElimOverlay() {
+  document.getElementById('elim-overlay').classList.remove('show');
+  state.pendingElim = null;
+}
+
+function confirmElim() {
+  const p = state.players[state.pendingElim];
+  document.getElementById('elim-overlay').classList.remove('show');
+
+  if (p.role === 'mrwhite') {
+    const guess = document.getElementById('mrwhite-guess').value.trim().toLowerCase();
+    const correct = state.civWord.toLowerCase();
+    if (guess === correct) {
+      showResult('mrwhite_wins');
+      return;
+    }
+  }
+
+  p.alive = false;
+  checkWinCondition();
+}
+
+function checkWinCondition() {
+  const alivePlayers = state.players.filter(p => p.alive);
+  const aliveUC = alivePlayers.filter(p => p.role === 'undercover');
+  const aliveMW = alivePlayers.filter(p => p.role === 'mrwhite');
+  const aliveCiv = alivePlayers.filter(p => p.role === 'civilian');
+
+  // All undercover + mr whites eliminated
+  if (aliveUC.length === 0 && aliveMW.length === 0) {
+    showResult('civilians_win');
+    return;
+  }
+
+  // Undercover >= civilians (undercover wins)
+  if (aliveUC.length >= aliveCiv.length) {
+    showResult('undercover_wins');
+    return;
+  }
+
+  // Continue game — next round of descriptions
+  startDescribePhase();
+}
+
+// ══ RESULT ══
+function showResult(outcome) {
+  const icon = document.getElementById('result-icon');
+  const title = document.getElementById('result-title');
+  const sub = document.getElementById('result-sub');
+
+  if (outcome === 'civilians_win') {
+    icon.textContent = '🎉';
+    title.textContent = 'CIVILIANS WIN!';
+    sub.textContent = 'The undercover agent has been found.\nJustice prevails!';
+    title.style.color = 'var(--civilian)';
+  } else if (outcome === 'undercover_wins') {
+    icon.textContent = '🕵️';
+    title.textContent = 'UNDERCOVER WINS!';
+    sub.textContent = 'The spy outsmarted everyone.\nBetter luck next time, civilians!';
+    title.style.color = 'var(--undercover)';
+  } else if (outcome === 'mrwhite_wins') {
+    icon.textContent = '👻';
+    title.textContent = 'MR. WHITE WINS!';
+    sub.textContent = 'Mr. White guessed the civilian word!\nThe blank page wins this round!';
+    title.style.color = 'var(--mrwhite)';
+  }
+
+  document.getElementById('final-civilian-word').textContent = state.civWord;
+  document.getElementById('final-undercover-word').textContent = state.ucWord;
+
+  const cards = document.getElementById('reveal-cards');
+  cards.innerHTML = '';
+  state.players.forEach(p => {
+    const roleLabel = p.role === 'civilian' ? 'Civilian' : p.role === 'undercover' ? 'Undercover' : 'Mr. White';
+    cards.innerHTML += `
+      <div class="reveal-player-card">
+        <div class="rp-name">${p.name}${!p.alive ? ' ☠️' : ''}</div>
+        <div class="rp-role ${p.role}">${roleLabel}</div>
+      </div>`;
+  });
+
+  show('result');
+}
+
+function playAgain() {
+  show('setup');
+}
+
+// ══ HELPERS ══
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+</script>
+</body>
+</html>
